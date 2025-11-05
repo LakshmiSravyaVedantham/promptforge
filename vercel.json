@@ -15,5 +15,10 @@
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "backend/main.py" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "backend/main.py": {
+      "includeFiles": "backend/templates/**"
+    }
+  }
 }
