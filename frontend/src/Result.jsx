@@ -11,33 +11,53 @@ function Result({ result, onBack }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleDownloadZip = () => {
+  const handleDownloadZip = async () => {
     setDownloading(true)
     
-    // Create ZIP file content (simplified - in production use JSZip library)
-    const files = {
-      'frontend/src/App.jsx': result.frontend_code,
-      'backend/main.py': result.backend_code,
-      'supabase/schema.sql': result.database_schema,
-      'DEPLOY.md': result.deploy_instructions,
-      'README.md': `# ${result.app_name}\n\n${result.idea}\n\n## Quick Start\n\nSee DEPLOY.md for deployment instructions.`
+    try {
+      // Dynamically import JSZip (code splitting)
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+      
+      // Add frontend files
+      const frontend = zip.folder('frontend')
+      frontend.folder('src')
+      frontend.file('src/App.jsx', result.frontend_code)
+      frontend.file('src/index.css', '/* Add Cursor/Windsurf theme from PromptForge */')
+      frontend.file('src/main.jsx', `import React from 'react'\nimport ReactDOM from 'react-dom/client'\nimport App from './App.jsx'\nimport './index.css'\n\nReactDOM.createRoot(document.getElementById('root')).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n)`)
+      frontend.file('package.json', '{\n  "name": "' + result.app_name.toLowerCase() + '",\n  "private": true,\n  "version": "1.0.0",\n  "type": "module",\n  "scripts": {\n    "dev": "vite",\n    "build": "vite build",\n    "preview": "vite preview"\n  },\n  "dependencies": {\n    "react": "^18.2.0",\n    "react-dom": "^18.2.0"\n  },\n  "devDependencies": {\n    "@vitejs/plugin-react": "^4.2.1",\n    "vite": "^5.0.8"\n  }\n}')
+      frontend.file('vite.config.js', `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\n\nexport default defineConfig({\n  plugins: [react()],\n})`)
+      frontend.file('index.html', `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${result.app_name}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.jsx"></script>\n  </body>\n</html>`)
+      
+      // Add backend files
+      const backend = zip.folder('backend')
+      backend.file('main.py', result.backend_code)
+      backend.file('requirements.txt', 'fastapi==0.104.1\nuvicorn==0.24.0\npydantic==2.5.0')
+      backend.file('.env.example', 'SUPABASE_URL=your_supabase_url\nSUPABASE_KEY=your_supabase_key')
+      
+      // Add database files
+      const supabase = zip.folder('supabase')
+      supabase.file('schema.sql', result.database_schema)
+      
+      // Add root files
+      zip.file('README.md', `# ${result.app_name}\n\n${result.idea}\n\n## Quick Start\n\n### Frontend\n\`\`\`bash\ncd frontend\nnpm install\nnpm run dev\n\`\`\`\n\n### Backend\n\`\`\`bash\ncd backend\npip install -r requirements.txt\npython main.py\n\`\`\`\n\n## Deployment\n\nSee DEPLOY.md for deployment instructions.`)
+      zip.file('DEPLOY.md', result.deploy_instructions)
+      zip.file('.gitignore', 'node_modules/\n__pycache__/\n*.pyc\n.env\ndist/\nbuild/')
+      
+      // Generate and download ZIP
+      const content = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(content)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${result.app_name.toLowerCase()}-generated.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('ZIP generation failed:', error)
+      alert('Failed to create ZIP file. Try copying the code manually.')
     }
-    
-    // Create a text bundle (for now - upgrade to actual ZIP later)
-    let bundle = `# ${result.app_name} - Generated Code Bundle\n\n`
-    Object.entries(files).forEach(([path, content]) => {
-      bundle += `\n\n========== ${path} ==========\n${content}\n`
-    })
-    
-    const blob = new Blob([bundle], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${result.app_name.toLowerCase()}-generated.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
     
     setTimeout(() => setDownloading(false), 1000)
   }
