@@ -160,6 +160,10 @@ Make the code production-ready, well-commented, and include modern UI styling si
 def read_root():
     return {"status": "PromptForge API is running"}
 
+@app.get("/api/health")
+def health_check():
+    return {"ok": True, "service": "promptforge-backend"}
+
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate_app(request: IdeaRequest):
     """Generate a full-stack app from an idea"""
