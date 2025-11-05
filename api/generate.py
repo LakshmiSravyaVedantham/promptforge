@@ -22,8 +22,15 @@ except ImportError:
 app = FastAPI()
 
 # Optional AI integration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Debug: Check all possible environment variable names
+OPENAI_API_KEY = (
+    os.getenv("OPENAI_API_KEY") or 
+    os.getenv("OPENAI_API_KEY_PRODUCTION") or
+    os.environ.get("OPENAI_API_KEY") or
+    os.environ.get("OPENAI_KEY")
+)
 print(f"🔍 DEBUG: OPENAI_API_KEY exists: {OPENAI_API_KEY is not None}, length: {len(OPENAI_API_KEY) if OPENAI_API_KEY else 0}")
+print(f"🔍 DEBUG: All env vars starting with OPEN: {[k for k in os.environ.keys() if k.startswith('OPEN')]}")
 USE_AI = OPENAI_API_KEY is not None and len(OPENAI_API_KEY) > 0
 
 # Netlify API integration
