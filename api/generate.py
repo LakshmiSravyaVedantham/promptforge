@@ -53,6 +53,8 @@ class GenerateResponse(BaseModel):
     deploy_instructions: str
     live_url: Optional[str] = None  # New field for deployed URL
     deployment_status: Optional[str] = None  # New field for deployment status
+    generation_source: Optional[str] = None  # 'template' or 'ai'
+    matched_template: Optional[str] = None   # which template was used, if any
 
 # Load templates - adjust path for Vercel serverless
 templates_dir = Path(__file__).parent / "templates"
@@ -520,7 +522,9 @@ async def generate_app(request: IdeaRequest):
             database_schema=ai_result.get('database_schema', ''),
             deploy_instructions=ai_result.get('deploy_instructions', ''),
             live_url=live_url,
-            deployment_status=deployment_status
+            deployment_status=deployment_status,
+            generation_source="ai",
+            matched_template=None
         )
     
     # If no template and no AI, use todo as fallback
@@ -564,7 +568,9 @@ async def generate_app(request: IdeaRequest):
         database_schema=database_schema,
         deploy_instructions=deploy_instructions,
         live_url=live_url,
-        deployment_status=deployment_status
+        deployment_status=deployment_status,
+        generation_source="template",
+        matched_template=template_name
     )
 
 if __name__ == "__main__":
