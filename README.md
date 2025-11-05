@@ -2,9 +2,16 @@
 
 > Generate production-ready full-stack applications in 60 seconds from a single prompt.
 
-[![React](https://img.shields.io/badge/React-18.2-blue.svg)](https://reactjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green.svg)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/LakshmiSravya123/promptforge?style=social)](https://github.com/LakshmiSravya123/promptforge)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
+
+![PromptForge Demo](https://via.placeholder.com/800x400/1a1a1a/007acc?text=📹+Demo+GIF+Coming+Soon)
+
+*👆 Watch: From prompt to production-ready app in 60 seconds*
 
 ## ✨ What is PromptForge?
 
@@ -37,11 +44,26 @@ PromptForge is a **web-based full-stack application generator** that turns your 
 - Python 3.10+
 - Git
 
-### Installation
+**OR**
+
+- Docker and Docker Compose (easiest!)
+
+### Option 1: Docker (Recommended)
+
+```bash
+# Clone and run with one command
+git clone https://github.com/LakshmiSravya123/promptforge.git
+cd promptforge
+docker-compose up
+```
+
+Open **http://localhost:3000** - that's it! 🎉
+
+### Option 2: Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/promptforge.git
+git clone https://github.com/LakshmiSravya123/promptforge.git
 cd promptforge
 
 # Install frontend dependencies
@@ -174,13 +196,13 @@ cd backend
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing`)
-5. Open a Pull Request
+### Quick Contribution Ideas
+- 📝 Add new templates (we need 15+ more!)
+- 🐛 Report bugs or suggest features
+- 📚 Improve documentation
+- ⭐ Star the repo to show support
 
 ## 📄 License
 

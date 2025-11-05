@@ -546,6 +546,17 @@ a:hover {
   background-color: var(--accent-hover);
 }
 
+.copy-btn.secondary {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+}
+
+.copy-btn.secondary:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
 .code-container {
   flex: 1;
   overflow-y: auto;

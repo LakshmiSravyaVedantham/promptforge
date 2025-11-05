@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 from typing import Optional
+from difflib import SequenceMatcher
 
 app = FastAPI()
 
@@ -55,7 +56,7 @@ def load_template(name: str) -> dict:
         return json.load(f)
 
 def match_template(idea: str) -> tuple[str, dict]:
-    """Match user idea to the most appropriate template"""
+    """Match user idea to the most appropriate template using fuzzy matching"""
     idea_lower = idea.lower()
     
     # Template matching keywords
@@ -72,14 +73,34 @@ def match_template(idea: str) -> tuple[str, dict]:
         'quiz': ['quiz', 'trivia', 'questions', 'test', 'exam'],
     }
     
-    # Find best match
+    # First try exact keyword matching
     for template_name, keywords in templates.items():
         if any(keyword in idea_lower for keyword in keywords):
             template = load_template(template_name)
             if template:
+                print(f"✅ Exact match: {template_name}")
                 return template_name, template
     
+    # If no exact match, try fuzzy matching
+    best_match = None
+    best_score = 0.0
+    similarity_threshold = 0.6  # 60% similarity
+    
+    for template_name, keywords in templates.items():
+        for keyword in keywords:
+            similarity = SequenceMatcher(None, idea_lower, keyword).ratio()
+            if similarity > best_score:
+                best_score = similarity
+                best_match = template_name
+    
+    if best_score >= similarity_threshold:
+        template = load_template(best_match)
+        if template:
+            print(f"🔍 Fuzzy match: {best_match} (similarity: {best_score:.2%})")
+            return best_match, template
+    
     # No match found - return None to trigger AI generation if available
+    print(f"⚠️  No template match for: '{idea}' (best similarity: {best_score:.2%})")
     return None, None
 
 def generate_app_name(idea: str, template_name: str) -> str:

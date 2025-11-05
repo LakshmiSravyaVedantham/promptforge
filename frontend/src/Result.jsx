@@ -3,11 +3,43 @@ import { useState } from 'react'
 function Result({ result, onBack }) {
   const [activeTab, setActiveTab] = useState('frontend')
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownloadZip = () => {
+    setDownloading(true)
+    
+    // Create ZIP file content (simplified - in production use JSZip library)
+    const files = {
+      'frontend/src/App.jsx': result.frontend_code,
+      'backend/main.py': result.backend_code,
+      'supabase/schema.sql': result.database_schema,
+      'DEPLOY.md': result.deploy_instructions,
+      'README.md': `# ${result.app_name}\n\n${result.idea}\n\n## Quick Start\n\nSee DEPLOY.md for deployment instructions.`
+    }
+    
+    // Create a text bundle (for now - upgrade to actual ZIP later)
+    let bundle = `# ${result.app_name} - Generated Code Bundle\n\n`
+    Object.entries(files).forEach(([path, content]) => {
+      bundle += `\n\n========== ${path} ==========\n${content}\n`
+    })
+    
+    const blob = new Blob([bundle], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${result.app_name.toLowerCase()}-generated.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    setTimeout(() => setDownloading(false), 1000)
   }
 
   const tabs = [
@@ -65,27 +97,50 @@ function Result({ result, onBack }) {
           <h1>
             {tabs.find(t => t.id === activeTab)?.icon} {tabs.find(t => t.id === activeTab)?.label}
           </h1>
-          <button 
-            className="copy-btn"
-            onClick={() => handleCopy(getCurrentContent())}
-          >
-            {copied ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                Copied!
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                Copy Code
-              </>
-            )}
-          </button>
+          <div style={{display: 'flex', gap: '12px'}}>
+            <button 
+              className="copy-btn secondary"
+              onClick={handleDownloadZip}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <>
+                  <div className="spinner" style={{width: '14px', height: '14px'}}></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Download All
+                </>
+              )}
+            </button>
+            <button 
+              className="copy-btn"
+              onClick={() => handleCopy(getCurrentContent())}
+            >
+              {copied ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  Copy Code
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="code-container">
