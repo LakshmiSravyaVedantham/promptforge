@@ -26,9 +26,9 @@ if USE_AI:
         from openai import OpenAI
         ai_client = OpenAI(api_key=OPENAI_API_KEY)
         print("✅ AI integration enabled (OpenAI)")
-    except ImportError:
+    except Exception as e:
         USE_AI = False
-        print("⚠️  OpenAI package not installed. Install with: pip install openai")
+        print(f"⚠️  OpenAI initialization failed: {e}. Falling back to templates.")
 else:
     print("ℹ️  Running in template-only mode (set OPENAI_API_KEY for AI features)")
 
