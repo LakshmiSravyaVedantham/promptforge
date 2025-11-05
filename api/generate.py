@@ -178,6 +178,25 @@ def read_root():
 def health_check():
     return {"ok": True, "service": "promptforge-backend"}
 
+@app.get("/api/debug")
+def debug_info():
+    """Diagnostic info (no secrets) to help debug generation issues"""
+    try:
+        available_templates = []
+        try:
+            for p in templates_dir.glob('*.json'):
+                available_templates.append(p.stem)
+        except Exception:
+            pass
+        return {
+            "ok": True,
+            "use_ai": USE_AI,
+            "has_netlify_token": bool(NETLIFY_TOKEN),
+            "available_templates": available_templates,
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
     """Deploy frontend to Netlify and return live URL"""
     if not NETLIFY_TOKEN:

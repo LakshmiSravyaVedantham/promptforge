@@ -38,6 +38,9 @@ function App() {
       })
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Blocked by Vercel Deployment Protection. Please disable protection for this project or use a temporary bypass token to unlock the API.')
+        }
         throw new Error('Generation failed')
       }
 
