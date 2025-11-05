@@ -122,21 +122,24 @@ def generate_with_ai(idea: str) -> dict:
             status_code=400, 
             detail="No template match found. Enable AI by setting OPENAI_API_KEY environment variable."
         )
-    
+
     prompt = f"""Generate a complete full-stack web application for this idea: "{idea}"
 
 Return a JSON object with these fields:
 - app_name: A PascalCase name for the app
-- frontend_code: Complete React + Vite app code with all files (App.jsx, package.json, etc.)
+- frontend_code: Complete React + Vite app code with all files. IMPORTANT: Include explicit file section markers so we can extract them for deployment:
+    - Start App.jsx with a line exactly: // ===== src/App.jsx =====
+    - Start index.css with a line exactly: // ===== src/index.css =====
+    The App.jsx must be a single React component called App. It may import hooks from React. It should not import './index.css' (we will inline CSS). Do not export default App at the end.
 - backend_code: Complete FastAPI Python code with all routes
 - database_schema: Supabase PostgreSQL schema with tables
 - deploy_instructions: Step-by-step deployment guide for Netlify + Render + Supabase
 
-Make the code production-ready, well-commented, and include modern UI styling similar to Cursor/Windsurf dark theme."""
+Make the code production-ready, well-commented, and include modern UI styling similar to Cursor/Windsurf dark theme. Keep the App.jsx and index.css sections self-contained and valid when embedded inside an inline <script type=\"text/babel\"> block."""
 
     try:
         response = ai_client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert full-stack developer who generates complete, production-ready web applications."},
                 {"role": "user", "content": prompt}
@@ -150,6 +153,11 @@ Make the code production-ready, well-commented, and include modern UI styling si
         # Try to extract JSON from response
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            # Fallback: take the first fenced block if not labeled
+            parts = content.split("```")
+            if len(parts) >= 3:
+                content = parts[1]
         
         return json.loads(content)
     except Exception as e:
