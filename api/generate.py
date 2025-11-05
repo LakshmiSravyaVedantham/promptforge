@@ -180,46 +180,42 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
         return {"status": "skipped", "message": "No NETLIFY_TOKEN - deployment disabled"}
     
     try:
-        # Parse the frontend_code to extract React components
-        # Most templates have embedded code with markers like "# ===== App.jsx ====="
-        
         site_name = f"promptforge-{app_name.lower()}-{int(time.time())}"
         
-        # Create ZIP file with proper React/Vite structure
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        # Extract the App.jsx code from the template
+        app_jsx_code = ""
+        css_code = ""
+        
+        # Parse the frontend_code to extract App.jsx
+        lines = frontend_code.split('\n')
+        in_app_jsx = False
+        in_css = False
+        
+        for line in lines:
+            if '===== src/App.jsx =====' in line or '===== App.jsx =====' in line:
+                in_app_jsx = True
+                in_css = False
+                continue
+            elif '===== src/index.css =====' in line or '===== index.css =====' in line:
+                in_css = True
+                in_app_jsx = False
+                continue
+            elif '=====' in line:
+                in_app_jsx = False
+                in_css = False
+                continue
             
-            # Try to extract different file sections from frontend_code
-            if "# ===== " in frontend_code or "// ===== " in frontend_code:
-                # Template has embedded files
-                files = {}
-                current_file = None
-                current_content = []
-                
-                for line in frontend_code.split('\n'):
-                    if '# =====' in line or '// =====' in line:
-                        # Save previous file
-                        if current_file:
-                            files[current_file] = '\n'.join(current_content)
-                        # Start new file
-                        current_file = line.split('=====')[1].strip()
-                        current_content = []
-                    else:
-                        current_content.append(line)
-                
-                # Save last file
-                if current_file:
-                    files[current_file] = '\n'.join(current_content)
-                
-                # Write files to zip
-                for filename, content in files.items():
-                    if filename:
-                        zip_file.writestr(filename, content.strip())
-            
-            else:
-                # Single file - treat as index.html
-                # Wrap React code in a basic HTML template
-                html_template = f"""<!DOCTYPE html>
+            if in_app_jsx:
+                app_jsx_code += line + '\n'
+            elif in_css:
+                css_code += line + '\n'
+        
+        # If no App.jsx found, use the whole frontend_code
+        if not app_jsx_code.strip():
+            app_jsx_code = frontend_code
+        
+        # Create a standalone HTML file with React CDN
+        html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -230,54 +226,114 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }}
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }}
+        .app {{
+            display: flex;
+            min-height: 100vh;
+        }}
+        .sidebar {{
+            width: 280px;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            padding: 24px;
+        }}
+        .sidebar-header h2 {{
+            color: #fff;
+            margin-bottom: 8px;
+        }}
+        .main-content {{
+            flex: 1;
+            padding: 32px;
+            max-width: 1200px;
+        }}
+        button {{
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }}
+        button:hover {{
+            background: #2563eb;
+        }}
+        input[type="text"] {{
+            padding: 12px 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            width: 100%;
+        }}
+        input[type="text"]:focus {{
+            outline: none;
+            border-color: #3b82f6;
+        }}
+        {css_code}
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        {frontend_code}
+        const {{ useState, useEffect }} = React;
+        
+        {app_jsx_code}
         
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
 </html>"""
-                zip_file.writestr('index.html', html_template)
-            
-            # Add Netlify redirect for SPA
+        
+        # Create ZIP file
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr('index.html', html_content)
             zip_file.writestr('_redirects', '/* /index.html 200')
         
         zip_buffer.seek(0)
         
         # Deploy to Netlify
-        headers = {
-            'Authorization': f'Bearer {NETLIFY_TOKEN}',
-            'Content-Type': 'application/zip'
-        }
+        headers = {'Authorization': f'Bearer {NETLIFY_TOKEN}'}
         
         # Create site
         response = requests.post(
             'https://api.netlify.com/api/v1/sites',
-            headers={'Authorization': f'Bearer {NETLIFY_TOKEN}'},
+            headers=headers,
             json={'name': site_name}
         )
         
         if response.status_code not in [200, 201]:
-            return {"status": "error", "message": f"Failed to create site: {response.text}"}
+            print(f"Site creation failed: {response.text}")
+            return {"status": "error", "message": f"Failed to create site: {response.text[:200]}"}
         
         site_id = response.json()['id']
         site_url = response.json()['url']
         
         # Deploy files
+        deploy_headers = {
+            'Authorization': f'Bearer {NETLIFY_TOKEN}',
+            'Content-Type': 'application/zip'
+        }
+        
         deploy_response = requests.post(
             f'https://api.netlify.com/api/v1/sites/{site_id}/deploys',
-            headers=headers,
+            headers=deploy_headers,
             data=zip_buffer.getvalue()
         )
         
         if deploy_response.status_code not in [200, 201]:
-            return {"status": "error", "message": f"Deployment failed: {deploy_response.text}"}
+            print(f"Deployment failed: {deploy_response.text}")
+            return {"status": "error", "message": f"Deployment failed: {deploy_response.text[:200]}"}
         
         deploy_url = deploy_response.json().get('ssl_url') or site_url
         
@@ -291,6 +347,8 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
         
     except Exception as e:
         print(f"❌ Netlify deployment error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/generate", response_model=GenerateResponse)
