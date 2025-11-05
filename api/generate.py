@@ -214,6 +214,19 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
         if not app_jsx_code.strip():
             app_jsx_code = frontend_code
         
+        # Clean up the App.jsx code - remove imports that won't work with CDN
+        cleaned_code_lines = []
+        for line in app_jsx_code.split('\n'):
+            # Skip import statements
+            if line.strip().startswith('import ') and ('react' in line.lower() or 'index.css' in line.lower() or './index.css' in line.lower()):
+                continue
+            # Skip export default
+            if line.strip() == 'export default App':
+                continue
+            cleaned_code_lines.append(line)
+        
+        app_jsx_code = '\n'.join(cleaned_code_lines)
+        
         # Create a standalone HTML file with React CDN
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -245,11 +258,84 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
         .sidebar-header h2 {{
             color: #fff;
             margin-bottom: 8px;
+            font-size: 24px;
+        }}
+        .sidebar-header p {{
+            color: #94a3b8;
+            font-size: 14px;
+        }}
+        .sidebar-nav {{
+            margin-top: 32px;
+        }}
+        .nav-section {{
+            margin-bottom: 24px;
+        }}
+        .nav-section-title {{
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }}
+        .nav-item {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: transparent;
+            color: #cbd5e1;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 4px;
+        }}
+        .nav-item:hover {{
+            background: #334155;
+        }}
+        .nav-item.active {{
+            background: #3b82f6;
+            color: white;
+        }}
+        .sidebar-footer {{
+            position: fixed;
+            bottom: 24px;
+            width: 232px;
+        }}
+        .info-box {{
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }}
+        .info-box strong {{
+            color: #3b82f6;
+            font-size: 32px;
+            display: block;
+            margin-bottom: 4px;
+        }}
+        .info-box p {{
+            color: #94a3b8;
+            font-size: 14px;
         }}
         .main-content {{
             flex: 1;
             padding: 32px;
             max-width: 1200px;
+        }}
+        .add-task-form {{
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }}
+        .add-task-form input {{
+            flex: 1;
         }}
         button {{
             padding: 12px 24px;
@@ -277,6 +363,49 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
         input[type="text"]:focus {{
             outline: none;
             border-color: #3b82f6;
+        }}
+        .tasks-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        .task-card {{
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }}
+        .task-card:hover {{
+            border-color: #475569;
+        }}
+        .task-card.completed {{
+            opacity: 0.6;
+        }}
+        .task-card.completed span {{
+            text-decoration: line-through;
+        }}
+        .task-card input[type="checkbox"] {{
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }}
+        .task-card span {{
+            flex: 1;
+            color: #e2e8f0;
+        }}
+        .delete-btn {{
+            background: transparent;
+            color: #ef4444;
+            padding: 8px 12px;
+            font-size: 20px;
+            line-height: 1;
+        }}
+        .delete-btn:hover {{
+            background: #7f1d1d;
         }}
         {css_code}
     </style>
