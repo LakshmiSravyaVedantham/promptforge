@@ -6,12 +6,20 @@ import os
 from pathlib import Path
 from typing import Optional
 from difflib import SequenceMatcher
+import requests
+import zipfile
+import io
+import hashlib
+import time
 
 app = FastAPI()
 
 # Optional AI integration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 USE_AI = OPENAI_API_KEY is not None
+
+# Netlify API integration
+NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN")  # Optional - for auto-deployment
 
 if USE_AI:
     try:
@@ -43,8 +51,10 @@ class GenerateResponse(BaseModel):
     backend_code: str
     database_schema: str
     deploy_instructions: str
+    live_url: Optional[str] = None  # New field for deployed URL
+    deployment_status: Optional[str] = None  # New field for deployment status
 
-# Load templates
+# Load templates - adjust path for Vercel serverless
 templates_dir = Path(__file__).parent / "templates"
 
 def load_template(name: str) -> dict:
@@ -164,6 +174,68 @@ def read_root():
 def health_check():
     return {"ok": True, "service": "promptforge-backend"}
 
+def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
+    """Deploy frontend to Netlify and return live URL"""
+    if not NETLIFY_TOKEN:
+        return {"status": "skipped", "message": "No NETLIFY_TOKEN - deployment disabled"}
+    
+    try:
+        # Create a simple HTML bundle from frontend_code
+        site_name = f"promptforge-{app_name.lower()}-{int(time.time())}"
+        
+        # Create ZIP file in memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Extract index.html from frontend_code (if it's a full project, parse it)
+            # For simplicity, we'll create a basic SPA structure
+            zip_file.writestr('index.html', frontend_code)
+            zip_file.writestr('_redirects', '/* /index.html 200')
+        
+        zip_buffer.seek(0)
+        
+        # Deploy to Netlify
+        headers = {
+            'Authorization': f'Bearer {NETLIFY_TOKEN}',
+            'Content-Type': 'application/zip'
+        }
+        
+        # Create site
+        response = requests.post(
+            'https://api.netlify.com/api/v1/sites',
+            headers={'Authorization': f'Bearer {NETLIFY_TOKEN}'},
+            json={'name': site_name}
+        )
+        
+        if response.status_code not in [200, 201]:
+            return {"status": "error", "message": f"Failed to create site: {response.text}"}
+        
+        site_id = response.json()['id']
+        site_url = response.json()['url']
+        
+        # Deploy files
+        deploy_response = requests.post(
+            f'https://api.netlify.com/api/v1/sites/{site_id}/deploys',
+            headers=headers,
+            data=zip_buffer.getvalue()
+        )
+        
+        if deploy_response.status_code not in [200, 201]:
+            return {"status": "error", "message": f"Deployment failed: {deploy_response.text}"}
+        
+        deploy_url = deploy_response.json().get('ssl_url') or site_url
+        
+        print(f"✅ Deployed {app_name} to Netlify: {deploy_url}")
+        
+        return {
+            "status": "success",
+            "url": deploy_url,
+            "site_id": site_id
+        }
+        
+    except Exception as e:
+        print(f"❌ Netlify deployment error: {e}")
+        return {"status": "error", "message": str(e)}
+
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate_app(request: IdeaRequest):
     """Generate a full-stack app from an idea"""
@@ -206,13 +278,28 @@ async def generate_app(request: IdeaRequest):
     database_schema = template['database'].replace('{APP_NAME}', app_name)
     deploy_instructions = template['deploy'].replace('{APP_NAME}', app_name)
     
+    # Auto-deploy to Netlify if token is available
+    deployment_result = deploy_to_netlify(app_name, frontend_code)
+    
+    live_url = None
+    deployment_status = "code_only"
+    
+    if deployment_result["status"] == "success":
+        live_url = deployment_result["url"]
+        deployment_status = "deployed"
+        print(f"🚀 Live at: {live_url}")
+    elif deployment_result["status"] == "skipped":
+        deployment_status = "deployment_disabled"
+    
     return GenerateResponse(
         app_name=app_name,
         idea=request.idea,
         frontend_code=frontend_code,
         backend_code=backend_code,
         database_schema=database_schema,
-        deploy_instructions=deploy_instructions
+        deploy_instructions=deploy_instructions,
+        live_url=live_url,
+        deployment_status=deployment_status
     )
 
 if __name__ == "__main__":

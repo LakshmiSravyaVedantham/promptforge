@@ -86,6 +86,47 @@ function Result({ result, onBack }) {
           <div className="result-badge">✅ Generated</div>
           <h2>{result.app_name}</h2>
           <p className="result-idea">{result.idea}</p>
+          
+          {/* Live URL Section */}
+          {result.live_url && (
+            <div style={{marginTop: '20px', padding: '16px', background: '#2a2a2a', borderRadius: '8px', border: '1px solid #3a3a3a'}}>
+              <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px'}}>
+                <span style={{fontSize: '20px'}}>🚀</span>
+                <strong style={{color: '#10b981'}}>Live & Deployed!</strong>
+              </div>
+              <a 
+                href={result.live_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#60a5fa',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  wordBreak: 'break-all',
+                  display: 'block',
+                  marginBottom: '12px'
+                }}
+              >
+                {result.live_url}
+              </a>
+              <button
+                onClick={() => window.open(result.live_url, '_blank')}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}
+              >
+                Open Live App →
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="sidebar-nav">
