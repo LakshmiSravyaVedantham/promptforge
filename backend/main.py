@@ -69,18 +69,12 @@ def match_template(idea: str) -> tuple[str, dict]:
     """Match user idea to the most appropriate template using fuzzy matching"""
     idea_lower = idea.lower()
     
-    # Template matching keywords
+    # Template matching keywords - ONLY for templates that actually exist
     templates = {
         'youtube': ['youtube', 'video', 'transcript', 'summarize video', 'video summary'],
-        'invoice': ['invoice', 'bill', 'receipt', 'billing', 'payment tracker'],
-        'scraper': ['scrape', 'scraper', 'web scraping', 'extract data', 'crawl'],
         'todo': ['todo', 'task', 'to-do', 'task manager', 'checklist'],
         'url_shortener': ['url', 'link', 'shortener', 'shorten', 'tiny url'],
-        'recipe': ['recipe', 'cooking', 'food', 'ingredients', 'meal'],
         'expense': ['expense', 'budget', 'spending', 'finance', 'money tracker'],
-        'notes': ['notes', 'note-taking', 'notebook', 'markdown', 'memo'],
-        'weather': ['weather', 'forecast', 'temperature', 'climate'],
-        'quiz': ['quiz', 'trivia', 'questions', 'test', 'exam'],
     }
     
     # First try exact keyword matching
@@ -493,13 +487,32 @@ async def generate_app(request: IdeaRequest):
     if not template and USE_AI:
         print(f"🤖 Using AI to generate app for: {request.idea}")
         ai_result = generate_with_ai(request.idea)
+        
+        app_name = ai_result.get('app_name', 'CustomApp')
+        frontend_code = ai_result.get('frontend_code', '')
+        
+        # Auto-deploy AI-generated app to Netlify if token is available
+        deployment_result = deploy_to_netlify(app_name, frontend_code)
+        
+        live_url = None
+        deployment_status = "code_only"
+        
+        if deployment_result["status"] == "success":
+            live_url = deployment_result["url"]
+            deployment_status = "deployed"
+            print(f"🚀 AI-generated app live at: {live_url}")
+        elif deployment_result["status"] == "skipped":
+            deployment_status = "deployment_disabled"
+        
         return GenerateResponse(
-            app_name=ai_result.get('app_name', 'CustomApp'),
+            app_name=app_name,
             idea=request.idea,
-            frontend_code=ai_result.get('frontend_code', ''),
+            frontend_code=frontend_code,
             backend_code=ai_result.get('backend_code', ''),
             database_schema=ai_result.get('database_schema', ''),
-            deploy_instructions=ai_result.get('deploy_instructions', '')
+            deploy_instructions=ai_result.get('deploy_instructions', ''),
+            live_url=live_url,
+            deployment_status=deployment_status
         )
     
     # If no template and no AI, use todo as fallback
