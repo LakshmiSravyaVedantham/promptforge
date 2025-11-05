@@ -77,6 +77,7 @@ def match_template(idea: str) -> tuple[str, dict]:
         'todo': ['todo', 'task', 'to-do', 'task manager', 'checklist'],
         'url_shortener': ['url', 'link', 'shortener', 'shorten', 'tiny url'],
         'expense': ['expense', 'budget', 'spending', 'finance', 'money tracker'],
+        'recipe': ['recipe', 'cooking', 'food', 'ingredients', 'meal', 'cuisine'],
     }
     
     # First try exact keyword matching
