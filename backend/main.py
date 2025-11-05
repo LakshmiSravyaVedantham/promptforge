@@ -12,11 +12,19 @@ import io
 import hashlib
 import time
 
+# Try to load .env for local development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = FastAPI()
 
 # Optional AI integration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-USE_AI = OPENAI_API_KEY is not None
+print(f"🔍 DEBUG: OPENAI_API_KEY exists: {OPENAI_API_KEY is not None}, length: {len(OPENAI_API_KEY) if OPENAI_API_KEY else 0}")
+USE_AI = OPENAI_API_KEY is not None and len(OPENAI_API_KEY) > 0
 
 # Netlify API integration
 NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN")  # Optional - for auto-deployment
