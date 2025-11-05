@@ -180,15 +180,72 @@ def deploy_to_netlify(app_name: str, frontend_code: str) -> dict:
         return {"status": "skipped", "message": "No NETLIFY_TOKEN - deployment disabled"}
     
     try:
-        # Create a simple HTML bundle from frontend_code
+        # Parse the frontend_code to extract React components
+        # Most templates have embedded code with markers like "# ===== App.jsx ====="
+        
         site_name = f"promptforge-{app_name.lower()}-{int(time.time())}"
         
-        # Create ZIP file in memory
+        # Create ZIP file with proper React/Vite structure
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            # Extract index.html from frontend_code (if it's a full project, parse it)
-            # For simplicity, we'll create a basic SPA structure
-            zip_file.writestr('index.html', frontend_code)
+            
+            # Try to extract different file sections from frontend_code
+            if "# ===== " in frontend_code or "// ===== " in frontend_code:
+                # Template has embedded files
+                files = {}
+                current_file = None
+                current_content = []
+                
+                for line in frontend_code.split('\n'):
+                    if '# =====' in line or '// =====' in line:
+                        # Save previous file
+                        if current_file:
+                            files[current_file] = '\n'.join(current_content)
+                        # Start new file
+                        current_file = line.split('=====')[1].strip()
+                        current_content = []
+                    else:
+                        current_content.append(line)
+                
+                # Save last file
+                if current_file:
+                    files[current_file] = '\n'.join(current_content)
+                
+                # Write files to zip
+                for filename, content in files.items():
+                    if filename:
+                        zip_file.writestr(filename, content.strip())
+            
+            else:
+                # Single file - treat as index.html
+                # Wrap React code in a basic HTML template
+                html_template = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{app_name}</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }}
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        {frontend_code}
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>"""
+                zip_file.writestr('index.html', html_template)
+            
+            # Add Netlify redirect for SPA
             zip_file.writestr('_redirects', '/* /index.html 200')
         
         zip_buffer.seek(0)
