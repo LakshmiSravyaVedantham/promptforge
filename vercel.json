@@ -15,6 +15,8 @@
   ],
   "routes": [
     { "handle": "filesystem" },
+    { "src": "/favicon.ico", "dest": "/favicon.svg" },
+    { "src": "/favicon.png", "dest": "/favicon.svg" },
     {
       "src": "/api/(.*)",
       "dest": "backend/main.py"
