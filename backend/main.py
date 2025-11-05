@@ -510,12 +510,9 @@ async def generate_app(request: IdeaRequest):
     if not request.idea or len(request.idea.strip()) < 10:
         raise HTTPException(status_code=400, detail="Idea must be at least 10 characters")
     
-    # Try template matching first
-    template_name, template = match_template(request.idea)
-    
-    # If no template match and AI is available, use AI
-    if not template and USE_AI:
-        print(f"🤖 Using AI to generate app for: {request.idea}")
+    # ALWAYS use AI generation if available - no templates
+    if USE_AI:
+        print(f"🤖 Using AI to generate custom app for: {request.idea}")
         ai_result = generate_with_ai(request.idea)
         
         app_name = ai_result.get('app_name', 'CustomApp')
@@ -547,50 +544,10 @@ async def generate_app(request: IdeaRequest):
             matched_template=None
         )
     
-    # If no template and no AI, use todo as fallback
-    if not template:
-        print(f"⚠️  No template match for '{request.idea}', using Todo template as fallback")
-        template_name = 'todo'
-        template = load_template('todo')
-    
-    if not template:
-        raise HTTPException(status_code=500, detail="Could not find appropriate template")
-    
-    # Generate app name
-    app_name = generate_app_name(request.idea, template_name)
-    
-    print(f"✅ Generated {app_name} using template: {template_name}")
-    
-    # Replace placeholders in template
-    frontend_code = template['frontend'].replace('{APP_NAME}', app_name)
-    backend_code = template['backend'].replace('{APP_NAME}', app_name)
-    database_schema = template['database'].replace('{APP_NAME}', app_name)
-    deploy_instructions = template['deploy'].replace('{APP_NAME}', app_name)
-    
-    # Auto-deploy to Netlify if token is available
-    deployment_result = deploy_to_netlify(app_name, frontend_code)
-    
-    live_url = None
-    deployment_status = "code_only"
-    
-    if deployment_result["status"] == "success":
-        live_url = deployment_result["url"]
-        deployment_status = "deployed"
-        print(f"🚀 Live at: {live_url}")
-    elif deployment_result["status"] == "skipped":
-        deployment_status = "deployment_disabled"
-    
-    return GenerateResponse(
-        app_name=app_name,
-        idea=request.idea,
-        frontend_code=frontend_code,
-        backend_code=backend_code,
-        database_schema=database_schema,
-        deploy_instructions=deploy_instructions,
-        live_url=live_url,
-        deployment_status=deployment_status,
-        generation_source="template",
-        matched_template=template_name
+    # If AI is not available, return error
+    raise HTTPException(
+        status_code=503,
+        detail="AI generation is not available. Please set OPENAI_API_KEY environment variable in Vercel project settings."
     )
 
 if __name__ == "__main__":
